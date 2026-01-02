@@ -1,4 +1,4 @@
-// 檔案名稱：main.cpp
+
 #define _CRT_SECURE_NO_WARNINGS 
 
 #include <iostream>
@@ -7,19 +7,33 @@
 #include <cstdlib> 
 #include <ctime>   
 #include <iomanip>
-#include "QuizLib.h" // [關鍵] 匯入你自己的 Library
+
+//引入 Windows API 和 多媒體標頭檔
+#include <windows.h> 
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib") // 告訴編譯器要連結音效庫
+
+#include "QuizLib.h" 
 
 using namespace std;
+
+//設定文字顏色的函式
+void SetColor(int color) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+}
 
 int main() {
     vector<Word> vocabList;
     srand((unsigned int)time(0));
 
-    // 直接呼叫 Library 裡的函式
+    // 讀取資料
     loadData(vocabList);
 
     if (vocabList.empty()) {
+        SetColor(12); // 紅色警告
         cout << "題庫是空的，請先建立 database.txt 檔案！" << endl;
+        SetColor(7);  // 恢復白色
         return 0;
     }
 
@@ -42,7 +56,6 @@ int main() {
 
     for (int i = 1; i <= totalQuestions; i++) {
         int index;
-
         if (vocabList.size() > 1) {
             do {
                 index = rand() % vocabList.size();
@@ -55,7 +68,11 @@ int main() {
         lastIndex = index;
         Word currentWord = vocabList[index];
 
-        cout << "\n[第 " << i << "/" << totalQuestions << " 題] 請問 [" << currentWord.english << "] 的中文是？: ";
+        // 顯示題目
+        SetColor(11); // 亮青色
+        cout << "\n[第 " << i << "/" << totalQuestions << " 題] ";
+        SetColor(7); // 恢復白色
+        cout << "請問 [" << currentWord.english << "] 的中文是？: ";
         cin >> userAns;
 
         if (userAns == "exit") {
@@ -63,36 +80,59 @@ int main() {
             break;
         }
 
-        // 使用 Library 裡的檢查函式
         if (checkAnswer(userAns, currentWord.chinese)) {
+            //答對用綠色
+            SetColor(10);
             cout << " [O] 答對了！" << endl;
+
+            //播放系統音效
+            PlaySound(TEXT("SystemAsterisk"), NULL, SND_ALIAS | SND_ASYNC);
+
+            SetColor(7); // 恢復白色
             score++;
         }
         else {
+            // 答錯用紅色
+            SetColor(12);
             cout << " [X] 答錯了！正確答案是: " << currentWord.chinese << endl;
+
+            //播放系統音效
+            PlaySound(TEXT("SystemHand"), NULL, SND_ALIAS | SND_ASYNC);
+
             cout << "[系統] 已加入錯題本..." << endl;
-            saveMistake(currentWord); // 使用 Library 裡的紀錄函式
+            SetColor(7); // 恢復白色
+            saveMistake(currentWord);
         }
     }
 
+    // 結算畫面
     cout << "\n==========================" << endl;
     cout << "測驗結束！" << endl;
 
     if (totalQuestions > 0) {
         double accuracy = (double)score / totalQuestions * 100.0;
+
+        // 使用 math.h 的 round 
         cout << "總共練習: " << totalQuestions << " 題" << endl;
         cout << "答對題數: " << score << " 題" << endl;
         cout << "正確率  : " << fixed << setprecision(1) << accuracy << "%" << endl;
 
-        if (accuracy == 100) cout << "評語: 太神啦！全對！" << endl;
-        else if (accuracy >= 80) cout << "評語: 很棒喔，繼續保持！" << endl;
-        else if (accuracy >= 60) cout << "評語: 及格了，再接再厲！" << endl;
-        else cout << "評語: 加油，記得去複習錯題本喔！" << endl;
+        if (accuracy == 100) {
+            SetColor(14); // 金黃色
+            cout << "評語: 太神啦！全對！" << endl;
+        }
+        else if (accuracy >= 60) {
+            SetColor(10); // 綠色
+            cout << "評語: 及格了，再接再厲！" << endl;
+        }
+        else {
+            SetColor(12); // 紅色
+            cout << "評語: 加油，記得去複習錯題本喔！" << endl;
+        }
+        SetColor(7);
     }
-    else {
-        cout << "你沒有練習任何題目。" << endl;
-    }
-    cout << "==========================" << endl;
 
+    // 確保程式結束前音效播完
+    Sleep(500);
     return 0;
 }
